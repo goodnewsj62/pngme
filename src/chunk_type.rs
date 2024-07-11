@@ -2,11 +2,11 @@ use std::{ fmt::Display, str::FromStr,  str};
 
 
 #[derive(PartialEq,  Eq, Debug)]
-struct ChunkType([u8;4]);
+pub struct ChunkType([u8;4]);
 
 
 impl ChunkType{
-    fn bytes(&self) -> [u8;4]{
+    pub fn bytes(&self) -> [u8;4]{
         self.0
     }
 
