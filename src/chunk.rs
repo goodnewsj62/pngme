@@ -1,4 +1,4 @@
-use crc::{Crc, CRC_16_DDS_110};
+use crc::{Crc, CRC_32_ISO_HDLC};
 use std::{fmt::Display, string::FromUtf8Error};
 use crate::chunk_type::ChunkType;
 
@@ -13,16 +13,15 @@ pub struct Chunk{
 
 impl Chunk {
     pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Self{
-        let x25: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_ISCSI);
-        let d = data.iter().chain(chunk_type.bytes().iter()).copied().collect::<Vec<u8>>();
+        
 
-
+        let crc_  =  Chunk::_generate_crc(&chunk_type.bytes(), &data);
         
         Chunk{
             length:  (data.len() as u32).to_be_bytes(),
             chunk_type,
             chunk_data:  data,
-            crc: x25.checksum( &d).to_be_bytes()
+            crc: crc_.to_be_bytes()
         }
     }
     pub fn length(&self) -> u32{
@@ -42,6 +41,15 @@ impl Chunk {
     }
     fn as_bytes(&self) -> Vec<u8>{
         self.chunk_data.clone()
+    }
+
+    fn _generate_crc(chunk_type:&[u8], data:&[u8]) -> u32{
+        pub const PNG_CRC: Crc<u32> = Crc::<u32>::new(&CRC_32_ISO_HDLC);
+        
+        let mut digest = PNG_CRC.digest();
+        digest.update(chunk_type);
+        digest.update(data);
+        digest.finalize()
     }
 }
 
@@ -68,6 +76,10 @@ impl TryFrom<&[u8]> for Chunk{
         
         let chunk_data =  value.iter().skip(8).take( numeric_len ).cloned().collect::<Vec<u8>>();
         let crc: [u8;4] = value.iter().skip(8 +  numeric_len).take(4).cloned().collect::<Vec<u8>>().try_into().map_err(|_| "invalid length for crc expected 4bytes array")?;
+
+        if Self::_generate_crc(&chunk_type.bytes(), &chunk_data).ne(&u32::from_be_bytes(crc)){
+            return  Err("corrupted data".to_string());
+        }
     
         Ok(Chunk{
             length:  length,
@@ -108,7 +120,6 @@ mod tests {
         let data = "This is where your secret message will be!".as_bytes().to_vec();
         let chunk = Chunk::new(chunk_type, data);
         assert_eq!(chunk.length(), 42);
-        println!("================================{}",chunk.crc());
         assert_eq!(chunk.crc(), 2882656334);
     }
 
