@@ -11,21 +11,18 @@ impl Png{
     const STANDARD_HEADER: [u8;8] =  [137, 80 ,78 ,71 ,13, 10, 26, 10];
 
     fn from_chunks(chunks: Vec<Chunk>) -> Png{
-        let chunk_bytes: Vec<u8> =  chunks.iter().flat_map(|x| x.as_bytes() ).collect();
-        Png::try_from(chunk_bytes.as_ref()).unwrap()
+        // let chunk_bytes: Vec<u8> =  chunks.iter().flat_map(|x| x.as_bytes() ).collect();
+        Png(chunks)
     }
     fn append_chunk(&mut self, chunk: Chunk){
-        self.0 =  self.0.into_iter().chain(iter::once(chunk)).collect::<Vec<Chunk>>();
-
+        self.0.push(chunk);
     }
     fn remove_first_chunk(&mut self, chunk_type: &str) -> Result<Chunk, String>{
-        let ret =  self.chunk_by_type(chunk_type);
+        let pos =  self.0.iter().position(|x| x.chunk_type().to_string().eq(chunk_type));
 
-        match ret {
-            Some(val) =>{
-                let val =  *val;
-                self.0 =  self.0.into_iter().filter(|x|x.chunk_type().to_string().ne(chunk_type)).collect::<Vec<Chunk>>();
-                return  Ok(val);
+        match pos{
+            Some(pos) =>{
+                return  Ok(self.0.remove(pos));
             }
             None => Err("chunk type not found".to_string())
             
@@ -41,7 +38,9 @@ impl Png{
         self.0.iter().find(|x| x.chunk_type().to_string().eq(chunk_type))
     }
     fn as_bytes(&self) -> Vec<u8>{
-        self.0.iter().flat_map(|x| x.as_bytes() ).collect()
+        let chunks: Vec<u8> =  self.0.iter().flat_map(|x| x.as_bytes() ).collect();
+        Vec::from(Png::STANDARD_HEADER).into_iter().chain(chunks.into_iter()).collect()
+
     }
 }
 
@@ -116,7 +115,7 @@ mod tests {
         Png::from_chunks(chunks)
     }
 
-    fn chunk_from_strings(chunk_type: &str, data: &str) -> Result<Chunk> {
+    fn chunk_from_strings(chunk_type: &str, data: &str) -> Result<Chunk, String> {
         use std::str::FromStr;
 
         let chunk_type = ChunkType::from_str(chunk_type)?;
