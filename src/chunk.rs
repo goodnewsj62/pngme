@@ -30,17 +30,21 @@ impl Chunk {
     pub fn chunk_type(&self) -> &ChunkType{
         &self.chunk_type
     }
-    fn data(&self) -> &[u8]{
+    pub fn data(&self) -> &[u8]{
         &self.chunk_data
     }
-    fn crc(&self) -> u32{
+    pub fn crc(&self) -> u32{
         u32::from_be_bytes(self.crc)
     }
-    fn data_as_string(&self) -> Result<String, FromUtf8Error>{
+    pub fn data_as_string(&self) -> Result<String, FromUtf8Error>{
         String::from_utf8(self.chunk_data.clone())
     }
-    fn as_bytes(&self) -> Vec<u8>{
-        self.chunk_data.clone()
+    pub fn as_bytes(&self) -> Vec<u8>{
+       self.length.iter().cloned()
+       .chain(self.chunk_type.bytes().iter().cloned())
+       .chain(self.chunk_data.iter().cloned())
+       .chain(self.crc.iter().cloned())
+       .collect::<Vec<u8>>()
     }
 
     fn _generate_crc(chunk_type:&[u8], data:&[u8]) -> u32{
